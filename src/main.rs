@@ -2,14 +2,21 @@ mod db;
 mod models;
 
 use std::error::Error;
+use std::env;
 
 use warp::{Filter, http::Response};
 use crate::models::Request;
 
-const BASE_URL: &str = "http://localhost:8080/";
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+
+    let base_url = env::var("BASE_URL")
+        .unwrap_or("http://localhost".to_string()).clone();
+    let port = match env::var("IGNORE_CASE") {
+        Ok(p) => p.parse::<u16>().unwrap_or(8080),
+        Err(_) => 8080
+    };
+
     db::init()?;
 
     let get = warp::get()
@@ -36,10 +43,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let shorten = warp::post()
         .and(warp::path::end())
         .and(warp::body::json())
-        .map(|req: Request| {
+        .map(move |req: Request| {
             match db::put(req.url) {
                 Ok(id) => {
-                    format!("{}{}", BASE_URL, id)
+                    format!("{}/{}", base_url, id)
                 },
                 Err(e) => {
                     format!("Error creating shorted URL: {:?}", e)
@@ -47,11 +54,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         });
 
-    let routes = get
+    let index = warp::get()
+        .and(warp::path::end())
+        .and(warp::fs::file("www/index.html"));
+
+    let deps = warp::get()
+        .and(warp::path::end())
+        .and(warp::fs::dir("www"));
+
+    let routes = index
+        .or(deps)
+        .or(get)
         .or(shorten);
 
     warp::serve(routes)
-        .run(([0, 0, 0, 0], 8080))
+        .run(([0, 0, 0, 0], port))
         .await;
     Ok(())
 }

@@ -2,7 +2,7 @@ use rusqlite::{Connection, Result, params};
 use sha2::{Sha256, Digest};
 
 pub fn init() -> Result<()> {
-    let conn = Connection::open("./test.db")?;
+    let conn = Connection::open("./url.db")?;
 
     match conn.execute(
         "CREATE TABLE IF NOT EXISTS urls (
@@ -24,7 +24,7 @@ pub fn put(url: String) -> Result<String> {
         .chars()
         .take(4)
         .collect();
-    let conn = Connection::open("./test.db")?;
+    let conn = Connection::open("./url.db")?;
     match conn.execute(
         "INSERT INTO urls (id, url) VALUES (?1, ?2);",
         params![id, url]) {
@@ -35,7 +35,7 @@ pub fn put(url: String) -> Result<String> {
 }
 
 pub fn get(id: String) -> Result<String> {
-    let conn = Connection::open("./test.db")?;
+    let conn = Connection::open("./url.db")?;
     conn.query_row(
         "SELECT url FROM urls WHERE id = ?1;",
         params![id],
