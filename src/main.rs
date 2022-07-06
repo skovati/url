@@ -11,7 +11,7 @@ use crate::models::Request;
 async fn main() -> Result<(), Box<dyn Error>> {
 
     let base_url = env::var("BASE_URL")
-        .unwrap_or("http://localhost".to_string()).clone();
+        .unwrap_or("http://localhost:8080".to_string()).clone();
     let port = match env::var("IGNORE_CASE") {
         Ok(p) => p.parse::<u16>().unwrap_or(8080),
         Err(_) => 8080
@@ -46,24 +46,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .map(move |req: Request| {
             match db::put(req.url) {
                 Ok(id) => {
-                    format!("{}/{}", base_url, id)
+                    let resp: models::Response = models::Response {
+                        id: format!("{}/{}", base_url, id),
+                    };
+                    warp::reply::json(&resp)
                 },
                 Err(e) => {
-                    format!("Error creating shorted URL: {:?}", e)
+                    let resp: models::Response = models::Response {
+                        id: format!("Error creating shorted URL: {:?}", e)
+                    };
+                    warp::reply::json(&resp)
                 }
             }
         });
 
     let index = warp::get()
-        .and(warp::path::end())
-        .and(warp::fs::file("www/index.html"));
-
-    let deps = warp::get()
-        .and(warp::path::end())
         .and(warp::fs::dir("www"));
 
     let routes = index
-        .or(deps)
         .or(get)
         .or(shorten);
 
